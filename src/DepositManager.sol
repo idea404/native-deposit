@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {XApp} from "@omni/contracts/src/pkg/XApp.sol";
-import {ConfLevel} from "@omni/contracts/src/libraries/ConfLevel.sol";
+import {XApp} from "lib/omni/contracts/src/pkg/XApp.sol";
+import {ConfLevel} from "lib/omni/contracts/src/libraries/ConfLevel.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
