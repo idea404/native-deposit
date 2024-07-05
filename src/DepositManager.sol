@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {XApp} from "lib/omni/contracts/src/pkg/XApp.sol";
 import {ConfLevel} from "lib/omni/contracts/src/libraries/ConfLevel.sol";
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 import {Deposit} from "./Deposit.sol";
 
