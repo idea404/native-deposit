@@ -9,23 +9,33 @@ import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {DepositManager} from "./DepositManager.sol";
 
 contract Deposit is XApp, Ownable {
-    address public GLOBAL_MANAGER_CONTRACT = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // TODO: update with actual address
-    uint256 public ADD_DEPOSIT_GAS = 200_000; // TODO: profile with testing
+    uint64 public ADD_DEPOSIT_GAS = 200_000; // TODO: profile with testing
 
-    constructor(address _portal, address _admin) XApp(_portal, ConfLevel.Latest) Ownable(_admin) {}
+    address public manager;
+
+    constructor(address _portal, address _admin, address _managerContract) XApp(_portal, ConfLevel.Finalized) Ownable(_admin) {
+        manager = _managerContract;
+    }
 
     function deposit() external payable {
         uint256 amount = msg.value;
         require(amount > 0, "Deposit: deposit more than 0");
 
-        uint256 fee = xcall(
+        uint256 fee = feeFor(
             omni.omniChainId(),
-            GLOBAL_MANAGER_CONTRACT,
             abi.encodeWithSelector(DepositManager.xDeposit.selector, msg.sender, amount),
             ADD_DEPOSIT_GAS
         );
 
-        require(msg.value >= fee, "Deposit: user xcall gas fee");
+        require(amount > fee, "Deposit: user xcall gas fee");
+        amount -= fee;
+
+        xcall(
+            omni.omniChainId(),
+            manager,
+            abi.encodeWithSelector(DepositManager.xDeposit.selector, msg.sender, amount),
+            ADD_DEPOSIT_GAS
+        );
     }
 
     function withdrawTo(address to, uint256 amount) external onlyOwner {

@@ -16,16 +16,18 @@ contract DepositManager is XApp, Ownable {
     mapping(uint64 => address) public contractOn; // chainId => contract address
     mapping(uint64 => bool) public supportedChains; // chainId => is supported
     mapping(uint64 => uint256) public conversionRates; // sourceChainId => conversion rate to global chain native token
+    mapping(uint64 => bool) public isHigherValue; // sourceChainId => is the token worth more than the global chain native token
 
-    event ConversionRateUpdated(uint256 chainId, uint256 newRate);
-    event ChainSupportUpdated(uint256 chainId, bool isSupported);
-    event DepositRecorded(address indexed user, uint256 indexed chainId, uint256 amount);
+    event ConversionRateUpdated(uint64 chainId, uint256 newRate, bool isHigherValue);
+    event ChainSupportUpdated(uint64 chainId, bool isSupported);
+    event DepositRecorded(address indexed user, uint64 indexed chainId, uint256 amount);
 
-    constructor(address _portal, address _admin) XApp(_portal, ConfLevel.Latest) Ownable(_admin){}
+    constructor(address _portal, address _admin) XApp(_portal, ConfLevel.Finalized) Ownable(_admin) {}
 
-    function setConversionRate(uint64 chainId, uint256 rate) external onlyOwner {
+    function setConversionRate(uint64 chainId, uint256 rate, bool higherValue) external onlyOwner {
         conversionRates[chainId] = rate;
-        emit ConversionRateUpdated(chainId, rate);
+        isHigherValue[chainId] = higherValue;
+        emit ConversionRateUpdated(chainId, rate, higherValue);
     }
 
     function updateChainSupport(uint64 chainId, bool isSupported, address contractAddress) external onlyOwner {
@@ -39,12 +41,20 @@ contract DepositManager is XApp, Ownable {
         require(supportedChains[xmsg.sourceChainId], "DepositManager: chain not supported");
         require(xmsg.sender == contractOn[xmsg.sourceChainId], "DepositManager: invalid sender");
 
-        uint256 convertedAmount = amount * conversionRates[xmsg.sourceChainId];
+        uint256 convertedAmount;
+        if (isHigherValue[xmsg.sourceChainId]) {
+            // If the source chain's token is worth more, divide the amount by the rate
+            convertedAmount = amount / conversionRates[xmsg.sourceChainId];
+        } else {
+            // If the source chain's token is worth less or equal, multiply the amount by the rate
+            convertedAmount = amount * conversionRates[xmsg.sourceChainId];
+        }
+
         depositOn[xmsg.sourceChainId] += amount;
         totalDeposit += convertedAmount;
 
         (bool success, ) = user.call{value: convertedAmount}("");
-        require(success, "DepositManager: transfer failed"); // TODO: handle failures better
+        require(success, "DepositManager: transfer failed"); // can handle failures better
 
         emit DepositRecorded(user, xmsg.sourceChainId, amount);
     }
